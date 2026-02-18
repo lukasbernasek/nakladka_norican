@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Norican — Truck Load Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #f4f6fa;
+  --white:    #ffffff;
+  --navy:     #0d2240;
+  --navy2:    #122c52;
+  --navy3:    #1a3966;
+  --navy4:    #0a1a30;
+  --border:   #d0d9e8;
+  --border2:  #b8c8df;
+  --text:     #0d2240;
+  --muted:    #5a7a9f;
+  --light:    #e8eef8;
+  --blue:     #1a4a8a;
+  --ok:       #0f7a4a;
+  --okbg:     #e6f4ee;
+  --fail:     #b02020;
+  --failbg:   #fdeaea;
+  --warnbg:   #fff8e6;
+  --warn:     #a06000;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--navy);
+  padding: 0 28px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 32px;
+}
+.logo-mark {
+  width: 30px;
+  height: 30px;
+  background: var(--white);
+  clip-path: polygon(0 0, 100% 0, 100% 65%, 65% 100%, 0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--navy);
+  letter-spacing: -0.5px;
+}
+.logo h1 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+  text-transform: uppercase;
+}
+.logo span {
+  font-size: 11px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.45);
+  margin-left: 6px;
+  letter-spacing: 0.04em;
+}
+
+.hstats {
+  margin-left: auto;
+  display: flex;
+  gap: 28px;
+  align-items: center;
+}
+.hs { text-align: right; }
+.hs-l { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.1em; }
+.hs-v { font-size: 18px; font-weight: 700; color: #fff; line-height: 1.1; }
+
+/* ── LAYOUT ── */
+.app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+/* ── CONTROLS PANEL (top) ── */
+.controls-panel {
+  display: flex;
+  gap: 0;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  max-height: 35vh;
+  min-height: 200px;
+  overflow: hidden;
+}
+
+.controls-left {
+  flex: 0 0 300px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.controls-right {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ── SIDEBAR SECTIONS ── */
+.section {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.sec-title {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+/* PALETTE LIST in right column */
+.plist-section {
+  padding: 10px 12px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.plist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.plist-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* CALC BUTTON (moved to controls) */
+.calc-section {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+/* FIELDS */
+.fgrid { display: grid; gap: 6px; margin-bottom: 6px; }
+.fgrid.c2 { grid-template-columns: 1fr 1fr; }
+.fgrid.c3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.field { display: flex; flex-direction: column; gap: 2px; }
+.field label {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.field input[type=text],
+.field input[type=number] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 7px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field input:focus {
+  border-color: var(--navy3);
+  box-shadow: 0 0 0 2px rgba(26,57,102,0.1);
+}
+.field .sub { font-size: 8px; color: var(--muted); margin-top: 1px; }
+
+/* CHECKBOX ROW */
+.chk-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.chk-row input { accent-color: var(--navy); width: 13px; height: 13px; }
+.chk-row label { font-size: 10px; color: var(--muted); cursor: pointer; }
+
+/* COLOR PICKER */
+.colors { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+.cd {
+  width: 18px; height: 18px; border-radius: 50%;
+  cursor: pointer; border: 2px solid transparent;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.cd:hover { transform: scale(1.2); }
+.cd.active { border-color: var(--navy); transform: scale(1.15); box-shadow: 0 0 0 1px #fff, 0 0 0 3px var(--navy); }
+
+/* BUTTONS */
+.btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+}
+.btn-navy { background: var(--navy); color: #fff; }
+.btn-navy:hover { background: var(--navy3); }
+.btn-outline { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-outline:hover { border-color: var(--navy); color: var(--navy); }
+.btn-sm { padding: 4px 8px; font-size: 10px; width: auto; }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 6px; }
+
+/* MAIN CALCULATE BUTTON */
+.calc-btn {
+  width: 100%;
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  padding: 8px;
+  border-radius: 5px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.calc-btn:hover { background: var(--navy3); transform: translateY(-1px); }
+.calc-btn:active { transform: translateY(0); }
+
+/* PALETTE LIST */
+.plist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 6px;
+  align-content: start;
+}
+
+.pi {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+  background: var(--white);
+  height: fit-content;
+}
+.pi.ok   { border-color: #b8dfc8; }
+.pi.fail { border-color: #f0c0c0; }
+
+.pi-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+}
+.pi-bar {
+  width: 3px;
+  height: 26px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: var(--navy2);
+}
+.pi-info { flex: 1; min-width: 0; }
+.pi-name { 
+  font-size: 11px; 
+  font-weight: 600; 
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pi-dims { 
+  font-size: 9px; 
+  color: var(--muted); 
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pi-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badge-ok   { background: var(--okbg);   color: var(--ok); }
+.badge-fail { background: var(--failbg); color: var(--fail); }
+.badge-pen  { background: var(--light);  color: var(--muted); }
+.pi-acts { display: flex; gap: 2px; }
+.pi-eb, .pi-db {
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; padding: 2px 4px; border-radius: 3px;
+  transition: background 0.12s;
+}
+.pi-eb:hover { background: var(--light); }
+.pi-db:hover { background: var(--failbg); }
+
+/* Inline edit form */
+.pi-ef {
+  display: none;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.pi.editing .pi-ef { display: block; }
+.ef-btns { display: flex; gap: 4px; margin-top: 6px; }
+.ef-btns .btn { width: auto; padding: 4px 8px; font-size: 10px; }
+
+/* Weight bar */
+.wbar-wrap { margin-top: 10px; }
+.wbar-top { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+.wbar-track { height: 4px; background: var(--light); border-radius: 2px; overflow: hidden; }
+.wbar-fill { height: 100%; border-radius: 2px; background: var(--navy); transition: width 0.4s, background 0.3s; }
+
+.empty { text-align: center; color: var(--muted); font-size: 12px; padding: 18px 10px; line-height: 1.7; }
+
+/* ── CANVAS AREA ── */
+/* ── CANVAS AREA ── */
+.ca {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+/* STRATEGY TABS */
+.strat-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+  overflow-x: auto;
+}
+.stab {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 12px 14px;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.stab:hover { color: var(--text); }
+.stab.active { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
+.stab-badge {
+  background: var(--light);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  min-width: 20px;
+  text-align: center;
+}
+.stab.active .stab-badge { background: var(--navy); color: #fff; }
+
+/* RESULT BAR */
+.rbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rpill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+.rpill-ok   { background: var(--okbg);   color: var(--ok); }
+.rpill-warn { background: var(--warnbg); color: var(--warn); }
+.rpill-fail { background: var(--failbg); color: var(--fail); }
+.rdet { font-size: 11px; color: var(--muted); }
+.rdet strong { color: var(--text); font-weight: 600; }
+
+/* VIEW TABS */
+.vtabs {
+  display: flex;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  gap: 0;
+  margin-top: 0;
+}
+.vt {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 10px 14px;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.vt:hover { color: var(--text); }
+.vt.active { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
+
+/* VIEWS */
+.views { flex: 1; position: relative; overflow: hidden; }
+.vp {
+  position: absolute; inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.vp.active { display: flex; }
+.hint-lbl {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+canvas { border-radius: 8px; max-width: 100%; max-height: 100%; }
+
+/* ── VEHICLE BAR ── */
+.veh-bar {
+  background: var(--light);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 20px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.veh-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.veh-tab:hover { border-color: var(--navy); color: var(--navy); }
+.veh-tab.active { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600; }
+.veh-tab .veh-icon { font-size: 14px; }
+.veh-tab .veh-count {
+  background: rgba(255,255,255,0.25);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.veh-tab:not(.active) .veh-count { background: var(--light); color: var(--muted); }
+.veh-suggest {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--ok);
+  font-weight: 600;
+  padding: 4px 10px;
+  background: var(--okbg);
+  border-radius: 4px;
+  border: 1px solid #b8dfc8;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">N</div>
+    <h1>Norican <span>/ Truck Load Planner</span></h1>
+  </div>
+  <div class="hstats">
+    <div class="hs"><div class="hs-l">Palet</div><div class="hs-v" id="hTotal">0</div></div>
+    <div class="hs"><div class="hs-l">Umístěno</div><div class="hs-v" id="hPlaced">0</div></div>
+    <div class="hs"><div class="hs-l">Využití plochy</div><div class="hs-v" id="hUtil">—</div></div>
+  </div>
+</header>
+
+<div class="app">
+
+<!-- ─── CONTROLS PANEL (TOP) ─── -->
+<div class="controls-panel">
+  
+  <!-- LEFT: Truck settings & Add palette -->
+  <div class="controls-left">
+    
+    <!-- KAMION -->
+    <div class="section">
+      <div class="sec-title">Rozměry kamionu</div>
+      <div class="fgrid c2">
+        <div class="field">
+          <label>Délka (m)</label>
+          <input type="number" id="tLen" value="13.6" step="0.1" min="1" max="25">
+          <span class="sub">std. 13,6 m</span>
+        </div>
+        <div class="field">
+          <label>Šířka (m)</label>
+          <input type="number" id="tWid" value="2.4" step="0.05" min="1" max="4">
+          <span class="sub">std. 2,4 m</span>
+        </div>
+      </div>
+      <div class="fgrid c2">
+        <div class="field">
+          <label>Výška (m)</label>
+          <input type="number" id="tHei" value="2.7" step="0.05" min="1" max="4">
+        </div>
+        <div class="field">
+          <label>Max. váha (t)</label>
+          <input type="number" id="tMaxW" value="24" step="0.5" min="1" max="50">
+        </div>
+      </div>
+    </div>
+
+    <!-- PŘIDAT PALETU -->
+    <div class="section">
+      <div class="sec-title">Přidat paletu</div>
+      <div class="fgrid c2" style="margin-bottom:8px;">
+        <div class="field" style="grid-column:1/-1">
+          <label>Název</label>
+          <input type="text" id="pName" value="EUR paleta">
+        </div>
+      </div>
+      <div class="fgrid c2">
+        <div class="field">
+          <label>Počet ks</label>
+          <input type="number" id="pCount" value="1" min="1" max="200">
+        </div>
+        <div class="field">
+          <label>Váha (kg)</label>
+          <input type="number" id="pWeight" value="500" step="10" min="1">
+        </div>
+      </div>
+      <div class="fgrid c3">
+        <div class="field">
+          <label>Délka (m)</label>
+          <input type="number" id="pLen" value="1.2" step="0.01" min="0.1">
+        </div>
+        <div class="field">
+          <label>Šířka (m)</label>
+          <input type="number" id="pWid" value="0.8" step="0.01" min="0.1">
+        </div>
+        <div class="field">
+          <label>Výška (m)</label>
+          <input type="number" id="pHei" value="1.2" step="0.01" min="0.01">
+        </div>
+      </div>
+      <div class="chk-row">
+        <input type="checkbox" id="pRot" checked>
+        <label for="pRot">Otočit pokud se lépe vejde</label>
+      </div>
+      <div class="colors" id="colPick"></div>
+      <button class="btn btn-navy" onclick="addPal()">+ Přidat paletu</button>
+    </div>
+
+    <!-- CALCULATE BUTTON -->
+    <div class="calc-section">
+      <button class="calc-btn" onclick="calculate()">Vypočítat rozložení</button>
+    </div>
+    
+  </div>
+
+  <!-- RIGHT: Palette list -->
+  <div class="controls-right">
+    <div class="plist-section">
+      <div class="plist-header">
+        <div class="sec-title" style="margin-bottom:0">Seznam palet</div>
+        <div class="btn-row" style="margin:0;width:auto;">
+          <button class="btn btn-outline btn-sm" onclick="clearAll()">Smazat</button>
+          <button class="btn btn-outline btn-sm" onclick="loadEx()">Příklad</button>
+        </div>
+      </div>
+      
+      <div class="plist-scroll">
+        <div class="plist" id="plist">
+          <div class="empty">Zatím žádné palety.<br>Přidejte první paletu vlevo.</div>
+        </div>
+      </div>
+      
+      <div class="wbar-wrap" id="wbarWrap" style="display:none;margin-top:10px;">
+        <div class="wbar-top">
+          <span>Celková váha</span>
+          <span id="wTxt">0 / 0 kg</span>
+        </div>
+        <div class="wbar-track"><div class="wbar-fill" id="wFill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── CANVAS AREA (BOTTOM) ─── -->
+<div class="ca">
+
+  <!-- STRATEGY TABS -->
+  <div class="strat-bar" id="stratBar">
+    <div class="stab active" data-idx="0" onclick="selectStrat(0)">
+      <span>Nejlepší výsledek</span>
+      <span class="stab-badge" id="sb0">—</span>
+    </div>
+    <div class="stab" data-idx="1" onclick="selectStrat(1)">
+      <span>🎲 Náhodné</span>
+      <span class="stab-badge" id="sb1">—</span>
+    </div>
+  </div>
+
+  <!-- VEHICLE TABS (shown when overflow) -->
+  <div class="veh-bar" id="vehBar" style="display:none"></div>
+
+  <!-- RESULT BAR -->
+  <div class="rbar">
+    <span class="rpill rpill-warn" id="rPill">Čeká na výpočet</span>
+    <span class="rdet" id="rDet">Přidejte palety a klikněte na Vypočítat</span>
+  </div>
+
+  <!-- VIEW TABS -->
+  <div class="vtabs">
+    <div class="vt active" onclick="swView('top')">Pohled shora</div>
+    <div class="vt" onclick="swView('side')">Pohled z boku</div>
+    <div class="vt" onclick="swView('3d')">3D pohled</div>
+  </div>
+
+  <div class="views">
+    <div class="vp active" id="view-top">
+      <canvas id="cTop"></canvas>
+      <div class="hint-lbl">Pohled shora — půdorys nakládky</div>
+    </div>
+    <div class="vp" id="view-side">
+      <canvas id="cSide"></canvas>
+      <div class="hint-lbl">Pohled z boku — výšky palet</div>
+    </div>
+    <div class="vp" id="view-3d">
+      <canvas id="c3d"></canvas>
+      <div class="hint-lbl">Izometrický 3D pohled</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .app -->
+
+<script>
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+const PAL_COLORS = [
+  '#0d2240','#1a3966','#2a5a9a','#3a7abc',
+  '#6aaad8','#96c4e8','#b8d8f2','#8faab8',
+  '#4a6a8a','#0a4a6a'
+];
+
+let palettes   = [];
+let uid        = 0;
+let strategies = [];  // results for each strategy
+let curStrat   = 0;   // active strategy index
+let curVeh     = 0;   // active vehicle index within current strategy
+
+// Vehicle types for overflow suggestion (smallest first after truck)
+const VEHICLE_TYPES = [
+  { id:'truck',  label:'Kamion',     icon:'🚛', l:13.6, w:2.4, h:2.7, maxW:24000 },
+  { id:'midi',   label:'Midi truck', icon:'🚚', l:7.2,  w:2.2, h:2.4, maxW:12000 },
+  { id:'van_l',  label:'Dodávka L',  icon:'🚐', l:4.2,  w:1.9, h:1.9, maxW:1500  },
+  { id:'van_m',  label:'Dodávka M',  icon:'🚐', l:3.0,  w:1.75,h:1.8, maxW:1000  },
+  { id:'van_s',  label:'Dodávka S',  icon:'🚐', l:2.0,  w:1.5, h:1.6, maxW:600   },
+];
+
+// ══════════════════════════════════════════════════════
+//  COLOR PICKER
+// ══════════════════════════════════════════════════════
+(()=>{
+  const cp = document.getElementById('colPick');
+  PAL_COLORS.forEach((c,i)=>{
+    const d = document.createElement('div');
+    d.className = 'cd' + (i===0?' active':'');
+    d.style.background = c;
+    d.dataset.color = c;
+    d.onclick = ()=>{ document.querySelectorAll('.cd').forEach(x=>x.classList.remove('active')); d.classList.add('active'); };
+    cp.appendChild(d);
+  });
+})();
+const getColor = ()=>(document.querySelector('.cd.active')||{}).dataset.color || PAL_COLORS[0];
+
+// ══════════════════════════════════════════════════════
+//  PALETTE MANAGEMENT
+// ══════════════════════════════════════════════════════
+function addPal() {
+  const name   = document.getElementById('pName').value.trim() || 'Paleta';
+  const count  = Math.max(1, parseInt(document.getElementById('pCount').value)||1);
+  const l      = parseFloat(document.getElementById('pLen').value);
+  const w      = parseFloat(document.getElementById('pWid').value);
+  const h      = parseFloat(document.getElementById('pHei').value);
+  const wt     = parseFloat(document.getElementById('pWeight').value);
+  const rot    = document.getElementById('pRot').checked;
+  const color  = getColor();
+  if(!l||!w||!h||!wt){ alert('Vyplňte všechny rozměry.'); return; }
+  for(let i=0;i<count;i++)
+    palettes.push({uid:++uid, name, l, w, h, wt, rot, color, status:'pending'});
+  renderList(); updHdr();
+}
+
+function delPal(u) {
+  palettes = palettes.filter(p=>p.uid!==u);
+  renderList(); updHdr();
+}
+
+function toggleEdit(u) {
+  document.getElementById('pi'+u)?.classList.toggle('editing');
+}
+
+function saveEdit(u) {
+  const p = palettes.find(p=>p.uid===u);
+  if(!p) return;
+  p.name  = document.getElementById('en'+u).value.trim() || p.name;
+  p.l     = parseFloat(document.getElementById('el'+u).value) || p.l;
+  p.w     = parseFloat(document.getElementById('ew'+u).value) || p.w;
+  p.h     = parseFloat(document.getElementById('eh'+u).value) || p.h;
+  p.wt    = parseFloat(document.getElementById('ewt'+u).value) || p.wt;
+  p.rot   = document.getElementById('er'+u).checked;
+  p.status= 'pending';
+  document.getElementById('pi'+u)?.classList.remove('editing');
+  renderList(); updHdr();
+}
+
+function renderList() {
+  const el = document.getElementById('plist');
+  if(!palettes.length){
+    el.innerHTML = '<div class="empty">Zatím žádné palety.<br>Přidejte první paletu vlevo.</div>';
+    document.getElementById('wbarWrap').style.display='none'; return;
+  }
+  document.getElementById('wbarWrap').style.display='block';
+  el.innerHTML = palettes.map(p=>{
+    const sc  = p.status==='ok'?'ok':p.status==='fail'?'fail':'';
+    const bdg = p.status==='ok'
+      ?'<span class="pi-badge badge-ok">✓ Vejde se</span>'
+      :p.status==='fail'
+        ?'<span class="pi-badge badge-fail">✗ Nevejde</span>'
+        :'<span class="pi-badge badge-pen">—</span>';
+    return `<div class="pi ${sc}" id="pi${p.uid}">
+      <div class="pi-hdr">
+        <div class="pi-bar" style="background:${p.color}"></div>
+        <div class="pi-info">
+          <div class="pi-name">${p.name}</div>
+          <div class="pi-dims">${p.l} × ${p.w} × ${p.h} m &nbsp;·&nbsp; ${p.wt} kg</div>
+        </div>
+        ${bdg}
+        <div class="pi-acts">
+          <button class="pi-eb" title="Upravit" onclick="toggleEdit(${p.uid})">✏️</button>
+          <button class="pi-db" title="Smazat"  onclick="delPal(${p.uid})">✕</button>
+        </div>
+      </div>
+      <div class="pi-ef">
+        <div class="fgrid c2" style="margin-bottom:6px;">
+          <div class="field" style="grid-column:1/-1">
+            <label>Název</label>
+            <input type="text" id="en${p.uid}" value="${p.name}">
+          </div>
+        </div>
+        <div class="fgrid c3" style="margin-bottom:6px;">
+          <div class="field"><label>Délka</label><input type="number" id="el${p.uid}" value="${p.l}" step="0.01"></div>
+          <div class="field"><label>Šířka</label><input type="number" id="ew${p.uid}" value="${p.w}" step="0.01"></div>
+          <div class="field"><label>Výška</label><input type="number" id="eh${p.uid}" value="${p.h}" step="0.01"></div>
+        </div>
+        <div class="fgrid c2" style="margin-bottom:6px;">
+          <div class="field"><label>Váha (kg)</label><input type="number" id="ewt${p.uid}" value="${p.wt}" step="10"></div>
+          <div class="field" style="flex-direction:row;align-items:center;gap:6px;padding-top:16px;">
+            <input type="checkbox" id="er${p.uid}" ${p.rot?'checked':''} style="accent-color:var(--navy)">
+            <label for="er${p.uid}" style="font-size:11px;color:var(--muted);">Lze otočit</label>
+          </div>
+        </div>
+        <div class="ef-btns">
+          <button class="btn btn-navy btn-sm" onclick="saveEdit(${p.uid})">Uložit</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleEdit(${p.uid})">Zrušit</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  updWbar();
+}
+
+function updWbar() {
+  const mx  = parseFloat(document.getElementById('tMaxW').value)*1000;
+  const tot = palettes.reduce((s,p)=>s+p.wt, 0);
+  const pct = Math.min(100, tot/mx*100);
+  document.getElementById('wTxt').textContent = `${tot.toLocaleString('cs')} / ${mx.toLocaleString('cs')} kg`;
+  const f = document.getElementById('wFill');
+  f.style.width = pct+'%';
+  f.style.background = pct>100?'#b02020':pct>85?'#a06000':'var(--navy)';
+}
+
+function updHdr() {
+  document.getElementById('hTotal').textContent = palettes.length;
+  const nok = palettes.filter(p=>p.status==='ok').length;
+  document.getElementById('hPlaced').textContent = nok;
+  document.getElementById('hUtil').textContent =
+    palettes.length>0 && nok>0 ? Math.round(nok/palettes.length*100)+'%' : '—';
+}
+
+function clearAll() {
+  palettes=[]; strategies=[];
+  renderList(); updHdr(); resetUI(); drawEmpty();
+}
+
+function loadEx() {
+  clearAll();
+  [
+    {name:'EUR paleta',   cnt:8, l:1.2, w:0.8, h:1.2, wt:400,  color:PAL_COLORS[0]},
+    {name:'Průmyslová',   cnt:4, l:1.6, w:1.0, h:1.5, wt:800,  color:PAL_COLORS[2]},
+    {name:'Krabice',      cnt:6, l:0.6, w:0.6, h:0.8, wt:120,  color:PAL_COLORS[4]},
+    {name:'Stroj',        cnt:1, l:2.5, w:1.2, h:2.0, wt:2500, color:PAL_COLORS[6]},
+  ].forEach(e=>{
+    for(let i=0;i<e.cnt;i++)
+      palettes.push({uid:++uid, name:e.name, l:e.l, w:e.w, h:e.h, wt:e.wt, rot:true, color:e.color, status:'pending'});
+  });
+  renderList(); updHdr(); calculate();
+}
+
+// ══════════════════════════════════════════════════════
+//  MAXRECTS BIN-PACKING CORE
+// ══════════════════════════════════════════════════════
+function overlap(ax,ay,aw,ah,bx,by,bw,bh){
+  return ax<bx+bw-0.001&&ax+aw>bx+0.001&&ay<by+bh-0.001&&ay+ah>by+0.001;
+}
+function splitRect(fr,px,py,pw,ph){
+  const res=[];
+  if(py>fr.y)           res.push({x:fr.x,y:fr.y,   w:fr.w,                h:py-fr.y});
+  if(py+ph<fr.y+fr.h)   res.push({x:fr.x,y:py+ph,  w:fr.w,                h:(fr.y+fr.h)-(py+ph)});
+  if(px>fr.x)           res.push({x:fr.x,y:fr.y,   w:px-fr.x,             h:fr.h});
+  if(px+pw<fr.x+fr.w)   res.push({x:px+pw,y:fr.y,  w:(fr.x+fr.w)-(px+pw), h:fr.h});
+  return res;
+}
+function contained(a,b){
+  return b.x<=a.x+0.001&&b.y<=a.y+0.001&&b.x+b.w>=a.x+a.w-0.001&&b.y+b.h>=a.y+a.h-0.001;
+}
+function packOne(freeRects,pw,ph){
+  let best=Infinity,bx=-1,by=-1;
+  for(const r of freeRects){
+    if(pw<=r.w+0.001&&ph<=r.h+0.001){
+      const score=Math.min(r.w-pw,r.h-ph);
+      if(score<best){best=score;bx=r.x;by=r.y;}
+    }
+  }
+  return bx<0?null:{x:bx,y:by};
+}
+
+// Pack a queue into ONE vehicle. Returns {placed, overflow, totalW, areaUsed}
+function packIntoVehicle(queue, vl, vw, vh, vmaxW){
+  // Try both global orientations and pick the better one
+  const tryOrientation = (globalFlip) => {
+    let freeRects=[{x:0,y:0,w:vl,h:vw}];
+    const placed=[],overflow=[];let totalW=0;
+    
+    for(const pal of queue){
+      if(pal.h>vh+0.001){overflow.push({...pal,reason:'výška'});continue;}
+      if(totalW+pal.wt>vmaxW+0.001){overflow.push({...pal,reason:'váha'});continue;}
+      
+      // Apply global orientation to this palette
+      let pl, pw;
+      if(globalFlip && pal.rot && Math.abs(pal.l-pal.w)>0.001){
+        pl = pal.w; pw = pal.l; // flipped
+      } else {
+        pl = pal.l; pw = pal.w; // normal
+      }
+      
+      const pos = packOne(freeRects, pl, pw);
+      
+      if(pos){
+        const {x,y} = pos;
+        placed.push({...pal,x,y,pl,pw});
+        totalW+=pal.wt;
+        const newFree=[];
+        for(const r of freeRects){
+          if(overlap(x,y,pl,pw,r.x,r.y,r.w,r.h))newFree.push(...splitRect(r,x,y,pl,pw));
+          else newFree.push(r);
+        }
+        freeRects=newFree.filter((a,i)=>a.w>0.005&&a.h>0.005&&!newFree.some((b,j)=>i!==j&&contained(a,b)));
+      } else {
+        overflow.push({...pal,reason:'plocha'});
+      }
+    }
+    return{placed,overflow,totalW,areaUsed:placed.reduce((s,p)=>s+p.pl*p.pw,0)};
+  };
+  
+  // Try both: normal orientation and flipped orientation
+  const resultNormal = tryOrientation(false);
+  const resultFlipped = tryOrientation(true);
+  
+  // Pick the one that fits more palettes, then uses more area
+  if(resultFlipped.placed.length > resultNormal.placed.length){
+    return resultFlipped;
+  } else if(resultFlipped.placed.length === resultNormal.placed.length && 
+            resultFlipped.areaUsed > resultNormal.areaUsed){
+    return resultFlipped;
+  } else {
+    return resultNormal;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  MULTI-VEHICLE PACKING
+//  1. Fill main truck(s) until nothing remains
+//  2. Try to fit the last truck's load into a smaller vehicle
+// ══════════════════════════════════════════════════════
+function packMultiVehicle(sortedQueue, TL, TW, TH, MAXW){
+  const vehicles=[];
+  let remaining=[...sortedQueue];
+
+  // Keep filling same-size trucks
+  while(remaining.length>0){
+    const res=packIntoVehicle(remaining,TL,TW,TH,MAXW);
+    if(res.placed.length===0) break; // can't place anything (all too big/heavy)
+    const n=vehicles.length+1;
+    vehicles.push({
+      type:'truck', label:`Kamion ${n}`, icon:'🚛',
+      placed:res.placed, totalW:res.totalW, areaUsed:res.areaUsed,
+      dims:{l:TL,w:TW,h:TH,maxW:MAXW},
+    });
+    remaining=res.overflow;
+  }
+
+  const stuck=remaining; // truly impossible to load
+
+  // Suggest smaller vehicle for the last truck if it's the 2nd+
+  let suggestion=null;
+  if(vehicles.length>=2){
+    const lastPals=vehicles[vehicles.length-1].placed;
+    for(const vtype of VEHICLE_TYPES.slice(1)){ // skip main truck
+      const r=packIntoVehicle(lastPals,vtype.l,vtype.w,vtype.h,vtype.maxW);
+      if(r.overflow.length===0){
+        suggestion={
+          ...vtype, placed:r.placed, totalW:r.totalW, areaUsed:r.areaUsed,
+          dims:{l:vtype.l,w:vtype.w,h:vtype.h,maxW:vtype.maxW},
+          label:vtype.label,
+        };
+        break;
+      }
+    }
+  }
+
+  const totalPlaced=vehicles.reduce((s,v)=>s+v.placed.length,0);
+  return{vehicles,stuck,suggestion,totalPlaced};
+}
+
+// ══════════════════════════════════════════════════════
+//  STRATEGIES
+// ══════════════════════════════════════════════════════
+const STRATS=[
+  {
+    id:'best',
+    label:'Nejlepší výsledek',
+    sort:(a,b)=>{
+      // Inteligentní řazení: váha (40%) + velikost (40%) + výška (20%)
+      // Těžké a velké vždy první, malé a lehké poslední
+      const areaA = a.l * a.w;
+      const areaB = b.l * b.w;
+      const scoreA = a.wt * 0.4 + areaA * 0.4 + a.h * 0.2;
+      const scoreB = b.wt * 0.4 + areaB * 0.4 + b.h * 0.2;
+      return scoreB - scoreA;
+    }
+  },
+  {
+    id:'random',
+    label:'Náhodné',
+    sort:()=>Math.random()-0.5  // generates new random each time
+  },
+];
+
+function calculate(){
+  const TL=parseFloat(document.getElementById('tLen').value);
+  const TW=parseFloat(document.getElementById('tWid').value);
+  const TH=parseFloat(document.getElementById('tHei').value);
+  const MAXW=parseFloat(document.getElementById('tMaxW').value)*1000;
+  if(!palettes.length){alert('Přidejte alespoň jednu paletu.');return;}
+
+  strategies=[];
+  
+  // Always run "best" strategy
+  const bestQueue = [...palettes].sort(STRATS[0].sort);
+  const bestRes = packMultiVehicle(bestQueue,TL,TW,TH,MAXW);
+  strategies.push({...STRATS[0],...bestRes});
+  
+  // Run random strategy (will be different each time due to Math.random)
+  const randomQueue = [...palettes].sort(STRATS[1].sort);
+  const randomRes = packMultiVehicle(randomQueue,TL,TW,TH,MAXW);
+  strategies.push({...STRATS[1],...randomRes});
+
+  // Update badges
+  strategies.forEach((s,i)=>{
+    const el=document.getElementById('sb'+i);
+    if(el) el.textContent=s.totalPlaced+'/'+palettes.length;
+  });
+  
+  selectStrat(0); // always show "best" first
+}
+
+function selectStrat(idx){
+  // If clicking on "Náhodné" (index 1), recalculate with new random order
+  if(idx===1 && strategies.length>0){
+    const TL=parseFloat(document.getElementById('tLen').value);
+    const TW=parseFloat(document.getElementById('tWid').value);
+    const TH=parseFloat(document.getElementById('tHei').value);
+    const MAXW=parseFloat(document.getElementById('tMaxW').value)*1000;
+    
+    // Generate new random order
+    const randomQueue = [...palettes].sort(()=>Math.random()-0.5);
+    const randomRes = packMultiVehicle(randomQueue,TL,TW,TH,MAXW);
+    strategies[1] = {...STRATS[1],...randomRes};
+    
+    // Update badge
+    const el=document.getElementById('sb1');
+    if(el) el.textContent=randomRes.totalPlaced+'/'+palettes.length;
+  }
+  
+  curStrat=idx; curVeh=0;
+  document.querySelectorAll('.stab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  if(!strategies.length) return;
+  renderVehicleTabs();
+  showVehicle(0);
+}
+
+function renderVehicleTabs(){
+  const s=strategies[curStrat];
+  const bar=document.getElementById('vehBar');
+  if(!s||s.vehicles.length<=1&&!s.suggestion){bar.style.display='none';return;}
+  bar.style.display='flex';
+
+  let html=s.vehicles.map((v,i)=>`
+    <div class="veh-tab ${i===curVeh?'active':''}" onclick="showVehicle(${i})">
+      <span class="veh-icon">${v.icon}</span>
+      <span>${v.label}</span>
+      <span class="veh-count">${v.placed.length} pal.</span>
+    </div>`).join('');
+
+  if(s.suggestion){
+    const sg=s.suggestion;
+    html+=`<div class="veh-tab ${curVeh===99?'active':''}" onclick="showVehicle(99)" title="Doporučené menší vozidlo">
+      <span class="veh-icon">${sg.icon}</span>
+      <span>${sg.label} <span style="opacity:.55;font-size:10px">návrh</span></span>
+      <span class="veh-count">${sg.placed.length} pal.</span>
+    </div>`;
+    html+=`<span class="veh-suggest">💡 ${sg.label} postačí místo Kamionu ${s.vehicles.length}</span>`;
+  }
+  bar.innerHTML=html;
+}
+
+function showVehicle(vIdx){
+  curVeh=vIdx;
+  renderVehicleTabs();
+  const s=strategies[curStrat];
+  if(!s) return;
+  const TL=parseFloat(document.getElementById('tLen').value);
+  const TW=parseFloat(document.getElementById('tWid').value);
+  const MAXW=parseFloat(document.getElementById('tMaxW').value)*1000;
+
+  let veh;
+  if(vIdx===99&&s.suggestion) veh=s.suggestion;
+  else veh=s.vehicles[vIdx]||s.vehicles[0];
+  const dims=veh?veh.dims:{l:TL,w:TW,h:2.7,maxW:MAXW};
+
+  // Mark statuses: ok = placed in any vehicle of this strategy
+  palettes.forEach(p=>p.status='pending');
+  s.vehicles.forEach(v=>v.placed.forEach(pp=>{
+    const o=palettes.find(p=>p.uid===pp.uid);if(o)o.status='ok';
+  }));
+  s.stuck.forEach(pp=>{
+    const o=palettes.find(p=>p.uid===pp.uid);if(o)o.status='fail';
+  });
+  renderList(); updHdr();
+  updRes(s,veh,dims,MAXW);
+  drawAll(veh?veh.placed:[],dims.l,dims.w,dims.h,veh?veh.label:'');
+}
+
+function updRes(s,veh,dims,MAXW){
+  const n=palettes.length,np=s.totalPlaced,nv=s.vehicles.length;
+  const pill=document.getElementById('rPill'),det=document.getElementById('rDet');
+  if(np===n){
+    pill.className='rpill rpill-ok';
+    pill.textContent=nv===1?'Vše se vejde do 1 kamionu':`Vše se vejde · ${nv} vozidla`;
+  } else if(np===0){
+    pill.className='rpill rpill-fail';pill.textContent='Nic se nevejde';
+  } else {
+    pill.className='rpill rpill-warn';
+    pill.textContent=`${np}/${n} palet · ${nv} vozidl${nv===1?'o':nv<5?'a':''}`;
+  }
+  if(veh){
+    const u=Math.round(veh.areaUsed/(dims.l*dims.w)*100);
+    det.innerHTML=`<strong>${veh.label}</strong>: ${veh.placed.length} pal. &nbsp;·&nbsp; Plocha: <strong>${u}%</strong> &nbsp;·&nbsp; Váha: <strong>${(veh.totalW/1000).toFixed(1)}/${(dims.maxW/1000).toFixed(0)} t</strong>`+
+      (s.stuck.length?` &nbsp;·&nbsp; <span style="color:var(--fail)">${s.stuck.length} nevejde nikam</span>`:'');
+  }
+}
+
+function resetUI(){
+  strategies=[];
+  ['sb0','sb1'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
+  document.getElementById('vehBar').style.display='none';
+  document.getElementById('rPill').className='rpill rpill-warn';
+  document.getElementById('rPill').textContent='Čeká na výpočet';
+  document.getElementById('rDet').textContent='Přidejte palety a klikněte na Vypočítat';
+}
+
+// ══════════════════════════════════════════════════════
+//  DRAWING
+// ══════════════════════════════════════════════════════
+const PAD=44;
+function getTruck(){return{l:parseFloat(document.getElementById('tLen').value)||13.6,w:parseFloat(document.getElementById('tWid').value)||2.4,h:parseFloat(document.getElementById('tHei').value)||2.7};}
+function palFill(color,alpha){const r=parseInt(color.slice(1,3),16),g=parseInt(color.slice(3,5),16),b=parseInt(color.slice(5,7),16);return `rgba(${r},${g},${b},${alpha})`;}
+function shadeHex(hex,d){return '#'+[1,3,5].map(i=>Math.max(0,Math.min(255,parseInt(hex.slice(i,i+2),16)+d)).toString(16).padStart(2,'0')).join('');}
+function rr(ctx,x,y,w,h,r=5){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
+
+function drawEmpty(){const{l:TL,w:TW,h:TH}=getTruck();drawTop([],TL,TW,TH,'');drawSide([],TL,TW,TH,'');draw3D([],TL,TW,TH,'');}
+function drawAll(placed,TL,TW,TH,label){drawTop(placed,TL,TW,TH,label);drawSide(placed,TL,TW,TH,label);draw3D(placed,TL,TW,TH,label);}
+
+function drawTop(placed,TL,TW,TH,label){
+  const cv=document.getElementById('cTop'),ct=document.getElementById('view-top');
+  const avW=ct.clientWidth-40,avH=ct.clientHeight-60;
+  const sc=Math.min((avW-PAD*2)/TL,(avH-PAD*2)/TW);
+  cv.width=TL*sc+PAD*2;cv.height=TW*sc+PAD*2;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#f4f6fa';ctx.fillRect(0,0,cv.width,cv.height);
+  const tx=PAD,ty=PAD,tw=TL*sc,th=TW*sc;
+  ctx.fillStyle='#fff';rr(ctx,tx,ty,tw,th,6);ctx.fill();
+  ctx.strokeStyle='#0d2240';ctx.lineWidth=2;rr(ctx,tx,ty,tw,th,6);ctx.stroke();
+  ctx.strokeStyle='#e8eef8';ctx.lineWidth=0.5;
+  for(let x=1;x<TL;x++){const px=tx+x*sc;ctx.beginPath();ctx.moveTo(px,ty);ctx.lineTo(px,ty+th);ctx.stroke();}
+  for(let y=1;y<TW;y++){const py=ty+y*sc;ctx.beginPath();ctx.moveTo(tx,py);ctx.lineTo(tx+tw,py);ctx.stroke();}
+  for(const p of(placed||[])){
+    const px=tx+p.x*sc,py=ty+p.y*sc,pw=p.pl*sc,ph=p.pw*sc;
+    ctx.fillStyle=palFill(p.color,0.9);rr(ctx,px,py,pw,ph,4);ctx.fill();
+    ctx.strokeStyle=shadeHex(p.color,-20);ctx.lineWidth=1.5;rr(ctx,px,py,pw,ph,4);ctx.stroke();
+    if(pw>30&&ph>14){ctx.fillStyle='#fff';ctx.font=`600 ${Math.min(11,pw/6)}px Inter`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(p.name.substring(0,12),px+pw/2,py+ph/2);}
+  }
+  ctx.fillStyle='#5a7a9f';ctx.font='11px Inter';ctx.textAlign='center';
+  ctx.fillText(`${TL} m`,tx+tw/2,ty+th+26);
+  ctx.save();ctx.translate(tx-24,ty+th/2);ctx.rotate(-Math.PI/2);ctx.fillText(`${TW} m`,0,0);ctx.restore();
+  if(label){ctx.fillStyle='rgba(13,34,64,0.55)';ctx.font='bold 11px Inter';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText(label,tx,ty-8);}
+  ctx.fillStyle='#0d2240';ctx.fillRect(tx,ty+th+34,sc,2);
+  ctx.font='9px Inter';ctx.textAlign='left';ctx.fillStyle='#5a7a9f';ctx.fillText('1 m',tx+sc+4,ty+th+36);
+}
+
+function drawSide(placed,TL,TW,TH,label){
+  const cv=document.getElementById('cSide'),ct=document.getElementById('view-side');
+  const avW=ct.clientWidth-40,avH=ct.clientHeight-60;
+  const sc=Math.min((avW-PAD*2)/TL,(avH-PAD*2)/TH);
+  cv.width=TL*sc+PAD*2;cv.height=TH*sc+PAD*2;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#f4f6fa';ctx.fillRect(0,0,cv.width,cv.height);
+  const tx=PAD,ty=PAD,tw=TL*sc,th=TH*sc;
+  ctx.fillStyle='#fff';rr(ctx,tx,ty,tw,th,6);ctx.fill();
+  ctx.strokeStyle='#0d2240';ctx.lineWidth=2;rr(ctx,tx,ty,tw,th,6);ctx.stroke();
+  for(const p of(placed||[])){
+    const px=tx+p.x*sc,pw=p.pl*sc,ph=p.h*sc,py=ty+th-ph;
+    ctx.fillStyle=palFill(p.color,0.88);rr(ctx,px,py,pw,ph,3);ctx.fill();
+    ctx.strokeStyle=shadeHex(p.color,-20);ctx.lineWidth=1.5;rr(ctx,px,py,pw,ph,3);ctx.stroke();
+    if(ph>18&&pw>22){ctx.fillStyle='#fff';ctx.font='10px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`${p.h}m`,px+pw/2,py+ph/2);}
+  }
+  ctx.setLineDash([6,4]);ctx.strokeStyle='rgba(13,34,64,0.3)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx+tw,ty);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(13,34,64,0.5)';ctx.font='9px Inter';ctx.textAlign='right';ctx.fillText(`Max. ${TH} m`,tx+tw-3,ty-4);
+  ctx.fillStyle='#5a7a9f';ctx.font='11px Inter';ctx.textAlign='center';ctx.fillText(`${TL} m`,tx+tw/2,ty+th+26);
+  ctx.save();ctx.translate(tx-24,ty+th/2);ctx.rotate(-Math.PI/2);ctx.fillText(`${TH} m`,0,0);ctx.restore();
+  if(label){ctx.fillStyle='rgba(13,34,64,0.55)';ctx.font='bold 11px Inter';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText(label,tx,ty-8);}
+}
+
+function draw3D(placed,TL,TW,TH,label){
+  const cv=document.getElementById('c3d'),ct=document.getElementById('view-3d');
+  const avW=ct.clientWidth-36,avH=ct.clientHeight-36;
+  cv.width=avW;cv.height=avH;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#f4f6fa';ctx.fillRect(0,0,avW,avH);
+  const IS=Math.min(avW/(TL+TW)/1.7,avH/(TH+TW*.5)/1.5,30);
+  const ox=avW/2,oy=avH*.72;
+  const iso=(x,y,z)=>({x:ox+(x-y)*IS*.866,y:oy+(x+y)*IS*.5-z*IS});
+  function face(pts,col){ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.closePath();ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=.5;ctx.stroke();}
+  function box(x,y,z,w,d,h,top,right,front){
+    const p={ftl:iso(x,y,z+h),ftr:iso(x+w,y,z+h),fbl:iso(x,y,z),fbr:iso(x+w,y,z),btl:iso(x,y+d,z+h),btr:iso(x+w,y+d,z+h),bbl:iso(x,y+d,z),bbr:iso(x+w,y+d,z)};
+    face([p.ftl,p.ftr,p.btr,p.btl],top);face([p.ftr,p.btr,p.bbr,p.fbr],right);face([p.ftl,p.ftr,p.fbr,p.fbl],front);
+  }
+  box(0,0,0,TL,TW,TH,'rgba(13,34,64,0.06)','rgba(13,34,64,0.1)','rgba(13,34,64,0.08)');
+  const corners=[iso(0,0,0),iso(TL,0,0),iso(TL,TW,0),iso(0,TW,0)];
+  ctx.beginPath();corners.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle='#f0f4fa';ctx.fill();
+  ctx.strokeStyle='rgba(13,34,64,0.06)';ctx.lineWidth=.5;
+  for(let i=1;i<TL;i++){const a=iso(i,0,0),b=iso(i,TW,0);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+  for(let j=1;j<TW;j++){const a=iso(0,j,0),b=iso(TL,j,0);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+  [...(placed||[])].sort((a,b)=>(b.x+b.y)-(a.x+a.y)).forEach(p=>{
+    const c=p.color;
+    box(p.x,p.y,0,p.pl,p.pw,p.h,palFill(c,0.92),palFill(shadeHex(c,-30),0.92),palFill(shadeHex(c,-15),0.92));
+    const ctr=iso(p.x+p.pl/2,p.y+p.pw/2,p.h);
+    ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font=`600 ${Math.max(8,Math.min(11,IS*.48))}px Inter`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(p.name.substring(0,8),ctr.x,ctr.y-IS*.15);
+  });
+  ctx.strokeStyle='rgba(13,34,64,0.25)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  [[iso(0,0,0),iso(TL,0,0)],[iso(TL,0,0),iso(TL,TW,0)],[iso(TL,TW,0),iso(0,TW,0)],[iso(0,TW,0),iso(0,0,0)],
+   [iso(0,0,TH),iso(TL,0,TH)],[iso(TL,0,TH),iso(TL,TW,TH)],[iso(TL,TW,TH),iso(0,TW,TH)],[iso(0,TW,TH),iso(0,0,TH)],
+   [iso(0,0,0),iso(0,0,TH)],[iso(TL,0,0),iso(TL,0,TH)],[iso(TL,TW,0),iso(TL,TW,TH)],[iso(0,TW,0),iso(0,TW,TH)]
+  ].forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();});
+  ctx.setLineDash([]);
+  if(label){ctx.fillStyle='rgba(13,34,64,0.5)';ctx.font='bold 12px Inter';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(label,14,14);}
+}
+
+// ══════════════════════════════════════════════════════
+//  VIEW SWITCHING
+// ══════════════════════════════════════════════════════
+function swView(n){
+  document.querySelectorAll('.vt').forEach((t,i)=>t.classList.toggle('active',['top','side','3d'][i]===n));
+  document.querySelectorAll('.vp').forEach(p=>p.classList.toggle('active',p.id==='view-'+n));
+  const s=strategies[curStrat];
+  const veh=s?(curVeh===99&&s.suggestion?s.suggestion:s.vehicles[curVeh]||s.vehicles[0]):null;
+  const dims=veh?veh.dims:getTruck();
+  const pl=veh?veh.placed:[];const lbl=veh?veh.label:'';
+  setTimeout(()=>{
+    if(n==='top')drawTop(pl,dims.l,dims.w,dims.h,lbl);
+    else if(n==='side')drawSide(pl,dims.l,dims.w,dims.h,lbl);
+    else draw3D(pl,dims.l,dims.w,dims.h,lbl);
+  },10);
+}
+
+window.addEventListener('load',()=>drawEmpty());
+window.addEventListener('resize',()=>{
+  const s=strategies[curStrat];
+  const veh=s?(curVeh===99&&s.suggestion?s.suggestion:s.vehicles[curVeh]||s.vehicles[0]):null;
+  const dims=veh?veh.dims:getTruck();
+  const pl=veh?veh.placed:[];const lbl=veh?veh.label:'';
+  drawTop(pl,dims.l,dims.w,dims.h,lbl);drawSide(pl,dims.l,dims.w,dims.h,lbl);draw3D(pl,dims.l,dims.w,dims.h,lbl);
+});
+</script>
+</body>
+</html>
