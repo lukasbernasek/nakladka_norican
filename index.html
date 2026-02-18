@@ -258,6 +258,12 @@ header {
 .btn-sm { padding: 4px 8px; font-size: 10px; width: auto; }
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 6px; }
 
+#flipBtn.flipped {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+
 /* MAIN CALCULATE BUTTON */
 .calc-btn {
   width: 100%;
@@ -529,6 +535,87 @@ canvas { border-radius: 8px; max-width: 100%; max-height: 100%; }
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 768px) {
+  .app { height: auto; min-height: calc(100vh - 56px); }
+  
+  .controls-panel {
+    flex-direction: column;
+    max-height: none;
+    min-height: 0;
+  }
+  
+  .controls-left {
+    flex: 0 0 auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .controls-right {
+    flex: 0 0 auto;
+    max-height: 40vh;
+  }
+  
+  .plist {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  
+  .ca {
+    min-height: 50vh;
+  }
+  
+  .hstats {
+    gap: 16px;
+  }
+  
+  .hs-l { font-size: 8px; }
+  .hs-v { font-size: 16px; }
+}
+
+@media (max-width: 480px) {
+  header {
+    padding: 0 12px;
+    height: 48px;
+  }
+  
+  .logo h1 { font-size: 13px; }
+  .logo span { display: none; }
+  .logo-mark { width: 24px; height: 24px; font-size: 11px; }
+  
+  .hstats {
+    gap: 12px;
+  }
+  
+  .plist {
+    grid-template-columns: 1fr;
+  }
+  
+  .strat-bar, .vtabs {
+    padding: 0 10px;
+  }
+  
+  .stab, .vt {
+    padding: 10px 8px;
+    font-size: 10px;
+  }
+  
+  .rbar {
+    flex-wrap: wrap;
+    padding: 6px 10px;
+  }
+  
+  .rdet {
+    font-size: 10px;
+    width: 100%;
+    margin-top: 4px;
+  }
+  
+  #flipBtn {
+    width: 100%;
+    margin: 6px 0 0 0 !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -679,6 +766,9 @@ canvas { border-radius: 8px; max-width: 100%; max-height: 100%; }
   <div class="rbar">
     <span class="rpill rpill-warn" id="rPill">Čeká na výpočet</span>
     <span class="rdet" id="rDet">Přidejte palety a klikněte na Vypočítat</span>
+    <button class="btn btn-outline btn-sm" id="flipBtn" onclick="flipPalettes()" style="margin-left:auto;" title="Otočí palety o 180° a přepočítá rozložení">
+      🔄 Otočit palety
+    </button>
   </div>
 
   <!-- VIEW TABS -->
@@ -863,20 +953,42 @@ function updHdr() {
 }
 
 function clearAll() {
-  palettes=[]; strategies=[];
+  palettes=[]; strategies=[]; globalFlip=false;
   renderList(); updHdr(); resetUI(); drawEmpty();
+  document.getElementById('flipBtn')?.classList.remove('flipped');
+}
+
+function flipPalettes(){
+  if(!strategies.length){alert('Nejdřív vypočítejte rozložení.');return;}
+  globalFlip = !globalFlip;
+  document.getElementById('flipBtn').classList.toggle('flipped', globalFlip);
+  calculate(); // recalculate with flipped orientation
 }
 
 function loadEx() {
   clearAll();
-  [
-    {name:'EUR paleta',   cnt:8, l:1.2, w:0.8, h:1.2, wt:400,  color:PAL_COLORS[0]},
-    {name:'Průmyslová',   cnt:4, l:1.6, w:1.0, h:1.5, wt:800,  color:PAL_COLORS[2]},
-    {name:'Krabice',      cnt:6, l:0.6, w:0.6, h:0.8, wt:120,  color:PAL_COLORS[4]},
-    {name:'Stroj',        cnt:1, l:2.5, w:1.2, h:2.0, wt:2500, color:PAL_COLORS[6]},
-  ].forEach(e=>{
-    for(let i=0;i<e.cnt;i++)
-      palettes.push({uid:++uid, name:e.name, l:e.l, w:e.w, h:e.h, wt:e.wt, rot:true, color:e.color, status:'pending'});
+  // Generate random palettes each time (dice roll effect)
+  const paletteTypes = [
+    {name:'EUR paleta',    l:1.2, w:0.8, h:1.2,  wt:400},
+    {name:'Průmyslová',    l:1.6, w:1.0, h:1.5,  wt:800},
+    {name:'Krabice',       l:0.6, w:0.6, h:0.8,  wt:120},
+    {name:'Stroj',         l:2.5, w:1.2, h:2.0,  wt:2500},
+    {name:'Kontejner',     l:1.8, w:1.4, h:1.6,  wt:1200},
+    {name:'Bedna',         l:1.0, w:0.7, h:0.9,  wt:350},
+    {name:'Náklad XL',     l:2.8, w:1.5, h:2.2,  wt:1800},
+    {name:'Mini balík',    l:0.4, w:0.4, h:0.5,  wt:80},
+  ];
+  
+  // Random selection: pick 3-5 different palette types
+  const numTypes = 3 + Math.floor(Math.random() * 3);
+  const shuffled = [...paletteTypes].sort(()=>Math.random()-0.5);
+  const selected = shuffled.slice(0, numTypes);
+  
+  selected.forEach((type,i)=>{
+    const cnt = 2 + Math.floor(Math.random() * 7); // 2-8 pieces
+    const color = PAL_COLORS[i % PAL_COLORS.length];
+    for(let j=0;j<cnt;j++)
+      palettes.push({uid:++uid, name:type.name, l:type.l, w:type.w, h:type.h, wt:type.wt, rot:true, color, status:'pending'});
   });
   renderList(); updHdr(); calculate();
 }
@@ -911,55 +1023,62 @@ function packOne(freeRects,pw,ph){
 
 // Pack a queue into ONE vehicle. Returns {placed, overflow, totalW, areaUsed}
 function packIntoVehicle(queue, vl, vw, vh, vmaxW){
-  // Try both global orientations and pick the better one
-  const tryOrientation = (globalFlip) => {
-    let freeRects=[{x:0,y:0,w:vl,h:vw}];
-    const placed=[],overflow=[];let totalW=0;
+  let freeRects=[{x:0,y:0,w:vl,h:vw}];
+  const placed=[],overflow=[];let totalW=0;
+  
+  for(const pal of queue){
+    if(pal.h>vh+0.001){overflow.push({...pal,reason:'výška'});continue;}
+    if(totalW+pal.wt>vmaxW+0.001){overflow.push({...pal,reason:'váha'});continue;}
     
-    for(const pal of queue){
-      if(pal.h>vh+0.001){overflow.push({...pal,reason:'výška'});continue;}
-      if(totalW+pal.wt>vmaxW+0.001){overflow.push({...pal,reason:'váha'});continue;}
-      
-      // Apply global orientation to this palette
-      let pl, pw;
-      if(globalFlip && pal.rot && Math.abs(pal.l-pal.w)>0.001){
-        pl = pal.w; pw = pal.l; // flipped
+    // Try orientations respecting globalFlip
+    const orientations = [];
+    
+    if(pal.rot && Math.abs(pal.l-pal.w)>0.001){
+      // Has rotation option
+      if(globalFlip){
+        // Global flip active: try flipped first, then original if doesn't fit
+        orientations.push({pl:pal.w, pw:pal.l}); // flipped
+        orientations.push({pl:pal.l, pw:pal.w}); // original fallback
       } else {
-        pl = pal.l; pw = pal.w; // normal
+        // Normal: try original first, then flipped if doesn't fit
+        orientations.push({pl:pal.l, pw:pal.w}); // original
+        orientations.push({pl:pal.w, pw:pal.l}); // flipped fallback
       }
-      
-      const pos = packOne(freeRects, pl, pw);
-      
+    } else {
+      // Cannot rotate or square palette
+      orientations.push({pl:pal.l, pw:pal.w});
+    }
+    
+    let bestPos=null, bestOri=null, bestScore=Infinity;
+    for(const ori of orientations){
+      const pos = packOne(freeRects, ori.pl, ori.pw);
       if(pos){
-        const {x,y} = pos;
-        placed.push({...pal,x,y,pl,pw});
-        totalW+=pal.wt;
-        const newFree=[];
-        for(const r of freeRects){
-          if(overlap(x,y,pl,pw,r.x,r.y,r.w,r.h))newFree.push(...splitRect(r,x,y,pl,pw));
-          else newFree.push(r);
+        const score = pos.x*0.6 + pos.y;
+        if(score < bestScore){
+          bestScore = score;
+          bestPos = pos;
+          bestOri = ori;
         }
-        freeRects=newFree.filter((a,i)=>a.w>0.005&&a.h>0.005&&!newFree.some((b,j)=>i!==j&&contained(a,b)));
-      } else {
-        overflow.push({...pal,reason:'plocha'});
       }
     }
-    return{placed,overflow,totalW,areaUsed:placed.reduce((s,p)=>s+p.pl*p.pw,0)};
-  };
-  
-  // Try both: normal orientation and flipped orientation
-  const resultNormal = tryOrientation(false);
-  const resultFlipped = tryOrientation(true);
-  
-  // Pick the one that fits more palettes, then uses more area
-  if(resultFlipped.placed.length > resultNormal.placed.length){
-    return resultFlipped;
-  } else if(resultFlipped.placed.length === resultNormal.placed.length && 
-            resultFlipped.areaUsed > resultNormal.areaUsed){
-    return resultFlipped;
-  } else {
-    return resultNormal;
+    
+    if(bestPos && bestOri){
+      const {x,y} = bestPos;
+      placed.push({...pal,x,y,pl:bestOri.pl,pw:bestOri.pw});
+      totalW+=pal.wt;
+      const newFree=[];
+      for(const r of freeRects){
+        if(overlap(x,y,bestOri.pl,bestOri.pw,r.x,r.y,r.w,r.h))
+          newFree.push(...splitRect(r,x,y,bestOri.pl,bestOri.pw));
+        else newFree.push(r);
+      }
+      freeRects=newFree.filter((a,i)=>
+        a.w>0.005&&a.h>0.005&&!newFree.some((b,j)=>i!==j&&contained(a,b)));
+    } else {
+      overflow.push({...pal,reason:'plocha'});
+    }
   }
+  return{placed,overflow,totalW,areaUsed:placed.reduce((s,p)=>s+p.pl*p.pw,0)};
 }
 
 // ══════════════════════════════════════════════════════
@@ -1010,24 +1129,39 @@ function packMultiVehicle(sortedQueue, TL, TW, TH, MAXW){
 // ══════════════════════════════════════════════════════
 //  STRATEGIES
 // ══════════════════════════════════════════════════════
+let globalFlip = false; // Track if palettes should be rotated 180°
+
 const STRATS=[
   {
     id:'best',
     label:'Nejlepší výsledek',
     sort:(a,b)=>{
-      // Inteligentní řazení: váha (40%) + velikost (40%) + výška (20%)
-      // Těžké a velké vždy první, malé a lehké poslední
+      // Strict grouping to prevent small items between large ones
       const areaA = a.l * a.w;
       const areaB = b.l * b.w;
-      const scoreA = a.wt * 0.4 + areaA * 0.4 + a.h * 0.2;
-      const scoreB = b.wt * 0.4 + areaB * 0.4 + b.h * 0.2;
+      const volumeA = a.l * a.w * a.h;
+      const volumeB = b.l * b.w * b.h;
+      
+      // Primary: weight class (heavy > 500kg, medium 200-500, light < 200)
+      const wA = a.wt > 500 ? 3 : a.wt > 200 ? 2 : 1;
+      const wB = b.wt > 500 ? 3 : b.wt > 200 ? 2 : 1;
+      if(wA !== wB) return wB - wA;
+      
+      // Secondary: size class (large > 1m², medium 0.5-1m², small < 0.5m²)
+      const sA = areaA > 1.0 ? 3 : areaA > 0.5 ? 2 : 1;
+      const sB = areaB > 1.0 ? 3 : areaB > 0.5 ? 2 : 1;
+      if(sA !== sB) return sB - sA;
+      
+      // Within same class: volume + weight
+      const scoreA = volumeA * 0.5 + a.wt * 0.5;
+      const scoreB = volumeB * 0.5 + b.wt * 0.5;
       return scoreB - scoreA;
     }
   },
   {
     id:'random',
     label:'Náhodné',
-    sort:()=>Math.random()-0.5  // generates new random each time
+    sort:()=>Math.random()-0.5
   },
 ];
 
@@ -1227,15 +1361,93 @@ function drawSide(placed,TL,TW,TH,label){
   if(label){ctx.fillStyle='rgba(13,34,64,0.55)';ctx.font='bold 11px Inter';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText(label,tx,ty-8);}
 }
 
+// ── 3D ISO with interactive rotation ────────────────────────────────────────────────
+let rotation3D = { angleX: 30, angleY: 45 }; // default isometric angles
+let isDragging = false;
+let lastMouse = {x:0, y:0};
+
 function draw3D(placed,TL,TW,TH,label){
   const cv=document.getElementById('c3d'),ct=document.getElementById('view-3d');
   const avW=ct.clientWidth-36,avH=ct.clientHeight-36;
   cv.width=avW;cv.height=avH;
   const ctx=cv.getContext('2d');
   ctx.fillStyle='#f4f6fa';ctx.fillRect(0,0,avW,avH);
+  
+  // Setup mouse interaction (only once)
+  if(!cv.hasRotationListeners){
+    cv.hasRotationListeners = true;
+    
+    cv.addEventListener('mousedown', e=>{
+      isDragging = true;
+      lastMouse = {x:e.clientX, y:e.clientY};
+      cv.style.cursor = 'grabbing';
+    });
+    
+    window.addEventListener('mousemove', e=>{
+      if(!isDragging) return;
+      const dx = e.clientX - lastMouse.x;
+      const dy = e.clientY - lastMouse.y;
+      rotation3D.angleY += dx * 0.5;
+      rotation3D.angleX -= dy * 0.5;
+      rotation3D.angleX = Math.max(-89, Math.min(89, rotation3D.angleX));
+      lastMouse = {x:e.clientX, y:e.clientY};
+      draw3D(placed,TL,TW,TH,label); // redraw
+    });
+    
+    window.addEventListener('mouseup', ()=>{
+      isDragging = false;
+      cv.style.cursor = 'grab';
+    });
+    
+    cv.style.cursor = 'grab';
+    
+    // Touch support
+    cv.addEventListener('touchstart', e=>{
+      isDragging = true;
+      lastMouse = {x:e.touches[0].clientX, y:e.touches[0].clientY};
+    });
+    
+    cv.addEventListener('touchmove', e=>{
+      if(!isDragging) return;
+      e.preventDefault();
+      const dx = e.touches[0].clientX - lastMouse.x;
+      const dy = e.touches[0].clientY - lastMouse.y;
+      rotation3D.angleY += dx * 0.5;
+      rotation3D.angleX -= dy * 0.5;
+      rotation3D.angleX = Math.max(-89, Math.min(89, rotation3D.angleX));
+      lastMouse = {x:e.touches[0].clientX, y:e.touches[0].clientY};
+      draw3D(placed,TL,TW,TH,label);
+    });
+    
+    cv.addEventListener('touchend', ()=>{isDragging = false;});
+  }
+  
   const IS=Math.min(avW/(TL+TW)/1.7,avH/(TH+TW*.5)/1.5,30);
   const ox=avW/2,oy=avH*.72;
-  const iso=(x,y,z)=>({x:ox+(x-y)*IS*.866,y:oy+(x+y)*IS*.5-z*IS});
+  
+  // 3D rotation projection
+  const radX = rotation3D.angleX * Math.PI/180;
+  const radY = rotation3D.angleY * Math.PI/180;
+  
+  const project3D=(x,y,z)=>{
+    // Rotate around Y axis (horizontal spin)
+    const x1 = x * Math.cos(radY) - y * Math.sin(radY);
+    const y1 = x * Math.sin(radY) + y * Math.cos(radY);
+    const z1 = z;
+    
+    // Rotate around X axis (vertical tilt)
+    const y2 = y1 * Math.cos(radX) - z1 * Math.sin(radX);
+    const z2 = y1 * Math.sin(radX) + z1 * Math.cos(radX);
+    
+    // Isometric projection
+    return {
+      x: ox + (x1 - y2) * IS * 0.866,
+      y: oy + (x1 + y2) * IS * 0.5 - z2 * IS
+    };
+  };
+  
+  const iso = project3D;
+  
   function face(pts,col){ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.closePath();ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=.5;ctx.stroke();}
   function box(x,y,z,w,d,h,top,right,front){
     const p={ftl:iso(x,y,z+h),ftr:iso(x+w,y,z+h),fbl:iso(x,y,z),fbr:iso(x+w,y,z),btl:iso(x,y+d,z+h),btr:iso(x+w,y+d,z+h),bbl:iso(x,y+d,z),bbr:iso(x+w,y+d,z)};
@@ -1261,6 +1473,10 @@ function draw3D(placed,TL,TW,TH,label){
   ].forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();});
   ctx.setLineDash([]);
   if(label){ctx.fillStyle='rgba(13,34,64,0.5)';ctx.font='bold 12px Inter';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(label,14,14);}
+  
+  // Instructions overlay
+  ctx.fillStyle='rgba(13,34,64,0.4)';ctx.font='10px Inter';ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.fillText('🖱️ Táhněte myší pro otáčení',avW/2,avH-10);
 }
 
 // ══════════════════════════════════════════════════════
