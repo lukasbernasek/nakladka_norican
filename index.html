@@ -258,10 +258,16 @@ header {
 .btn-sm { padding: 4px 8px; font-size: 10px; width: auto; }
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 6px; }
 
+#flipBtn {
+  transition: all 0.2s;
+}
 #flipBtn.flipped {
   background: var(--navy);
   color: #fff;
   border-color: var(--navy);
+}
+#flipBtn:not(.flipped):hover {
+  background: var(--light);
 }
 
 /* MAIN CALCULATE BUTTON */
@@ -766,8 +772,8 @@ canvas { border-radius: 8px; max-width: 100%; max-height: 100%; }
   <div class="rbar">
     <span class="rpill rpill-warn" id="rPill">Čeká na výpočet</span>
     <span class="rdet" id="rDet">Přidejte palety a klikněte na Vypočítat</span>
-    <button class="btn btn-outline btn-sm" id="flipBtn" onclick="flipPalettes()" style="margin-left:auto;" title="Otočí palety o 180° a přepočítá rozložení">
-      🔄 Otočit palety
+    <button class="btn btn-outline btn-sm" id="flipBtn" onclick="flipCurrentVehicle()" style="margin-left:auto;" title="Otočí palety v aktuálním kamionu o 180°">
+      🔄 Otočit <span id="flipVehLabel">tento kamion</span>
     </button>
   </div>
 
@@ -953,16 +959,21 @@ function updHdr() {
 }
 
 function clearAll() {
-  palettes=[]; strategies=[]; globalFlip=false;
+  palettes=[]; strategies=[]; vehicleFlips={};
   renderList(); updHdr(); resetUI(); drawEmpty();
-  document.getElementById('flipBtn')?.classList.remove('flipped');
 }
 
-function flipPalettes(){
+function flipCurrentVehicle(){
   if(!strategies.length){alert('Nejdřív vypočítejte rozložení.');return;}
-  globalFlip = !globalFlip;
-  document.getElementById('flipBtn').classList.toggle('flipped', globalFlip);
-  calculate(); // recalculate with flipped orientation
+  const s = strategies[curStrat];
+  if(!s.vehicles || !s.vehicles[curVeh]){alert('Žádné vozidlo k otočení.');return;}
+  
+  // Toggle flip for current vehicle only
+  const vehKey = `${curStrat}_${curVeh}`;
+  vehicleFlips[vehKey] = !vehicleFlips[vehKey];
+  
+  // Recalculate just this vehicle
+  recalculateVehicle(curStrat, curVeh);
 }
 
 function loadEx() {
@@ -1014,7 +1025,10 @@ function packOne(freeRects,pw,ph){
   let best=Infinity,bx=-1,by=-1;
   for(const r of freeRects){
     if(pw<=r.w+0.001&&ph<=r.h+0.001){
-      const score=Math.min(r.w-pw,r.h-ph);
+      // Prefer corners and compact placement (better visual grouping)
+      const cornerScore = r.x * 0.7 + r.y * 0.3; // top-left preference
+      const wasteScore = Math.min(r.w-pw, r.h-ph) * 0.4;
+      const score = cornerScore + wasteScore;
       if(score<best){best=score;bx=r.x;by=r.y;}
     }
   }
@@ -1026,34 +1040,53 @@ function packIntoVehicle(queue, vl, vw, vh, vmaxW){
   let freeRects=[{x:0,y:0,w:vl,h:vw}];
   const placed=[],overflow=[];let totalW=0;
   
+  // Group similar palettes together
+  const grouped = [];
+  const seen = new Set();
+  
   for(const pal of queue){
+    const key = `${pal.name}_${pal.l}_${pal.w}_${pal.h}`;
+    if(!seen.has(key)){
+      seen.add(key);
+      grouped.push(...queue.filter(p=>
+        p.name===pal.name && p.l===pal.l && p.w===pal.w && p.h===pal.h
+      ));
+    }
+  }
+  
+  for(const pal of grouped){
     if(pal.h>vh+0.001){overflow.push({...pal,reason:'výška'});continue;}
     if(totalW+pal.wt>vmaxW+0.001){overflow.push({...pal,reason:'váha'});continue;}
     
-    // Try orientations respecting globalFlip
+    // Try orientations
     const orientations = [];
     
     if(pal.rot && Math.abs(pal.l-pal.w)>0.001){
-      // Has rotation option
-      if(globalFlip){
-        // Global flip active: try flipped first, then original if doesn't fit
-        orientations.push({pl:pal.w, pw:pal.l}); // flipped
-        orientations.push({pl:pal.l, pw:pal.w}); // original fallback
-      } else {
-        // Normal: try original first, then flipped if doesn't fit
-        orientations.push({pl:pal.l, pw:pal.w}); // original
-        orientations.push({pl:pal.w, pw:pal.l}); // flipped fallback
-      }
+      orientations.push({pl:pal.l, pw:pal.w});
+      orientations.push({pl:pal.w, pw:pal.l});
     } else {
-      // Cannot rotate or square palette
       orientations.push({pl:pal.l, pw:pal.w});
     }
     
+    // Find best position preferring proximity to same-type palettes
     let bestPos=null, bestOri=null, bestScore=Infinity;
     for(const ori of orientations){
       const pos = packOne(freeRects, ori.pl, ori.pw);
       if(pos){
-        const score = pos.x*0.6 + pos.y;
+        let proximityBonus = 0;
+        const sameType = placed.filter(p=>
+          p.name===pal.name && p.l===pal.l && p.w===pal.w && p.h===pal.h
+        );
+        
+        for(const existing of sameType){
+          const dist = Math.sqrt(
+            Math.pow(pos.x - existing.x, 2) + 
+            Math.pow(pos.y - existing.y, 2)
+          );
+          proximityBonus += Math.max(0, 10 - dist);
+        }
+        
+        const score = pos.x*0.5 + pos.y*0.3 - proximityBonus*0.8;
         if(score < bestScore){
           bestScore = score;
           bestPos = pos;
@@ -1129,33 +1162,42 @@ function packMultiVehicle(sortedQueue, TL, TW, TH, MAXW){
 // ══════════════════════════════════════════════════════
 //  STRATEGIES
 // ══════════════════════════════════════════════════════
-let globalFlip = false; // Track if palettes should be rotated 180°
+let vehicleFlips = {}; // Track flip state per vehicle: {vehicleIndex: boolean}
 
 const STRATS=[
   {
     id:'best',
     label:'Nejlepší výsledek',
     sort:(a,b)=>{
-      // Strict grouping to prevent small items between large ones
+      // CRITICAL: Strict physical grouping to prevent chaos
+      // Real loading: heavy/large items TOGETHER, then medium TOGETHER, then small TOGETHER
+      
+      const volA = a.l * a.w * a.h;
+      const volB = b.l * b.w * b.h;
       const areaA = a.l * a.w;
       const areaB = b.l * b.w;
-      const volumeA = a.l * a.w * a.h;
-      const volumeB = b.l * b.w * b.h;
       
-      // Primary: weight class (heavy > 500kg, medium 200-500, light < 200)
-      const wA = a.wt > 500 ? 3 : a.wt > 200 ? 2 : 1;
-      const wB = b.wt > 500 ? 3 : b.wt > 200 ? 2 : 1;
-      if(wA !== wB) return wB - wA;
+      // Define strict size categories (much stricter than before)
+      let catA, catB;
       
-      // Secondary: size class (large > 1m², medium 0.5-1m², small < 0.5m²)
-      const sA = areaA > 1.0 ? 3 : areaA > 0.5 ? 2 : 1;
-      const sB = areaB > 1.0 ? 3 : areaB > 0.5 ? 2 : 1;
-      if(sA !== sB) return sB - sA;
+      // Category based on BOTH weight AND size
+      if(a.wt >= 800 || volA >= 1.5) catA = 4;        // Extra large/heavy
+      else if(a.wt >= 400 || areaA >= 1.0) catA = 3;  // Large
+      else if(a.wt >= 200 || areaA >= 0.5) catA = 2;  // Medium
+      else catA = 1;                                   // Small
       
-      // Within same class: volume + weight
-      const scoreA = volumeA * 0.5 + a.wt * 0.5;
-      const scoreB = volumeB * 0.5 + b.wt * 0.5;
-      return scoreB - scoreA;
+      if(b.wt >= 800 || volB >= 1.5) catB = 4;
+      else if(b.wt >= 400 || areaB >= 1.0) catB = 3;
+      else if(b.wt >= 200 || areaB >= 0.5) catB = 2;
+      else catB = 1;
+      
+      // PRIMARY: Category (this prevents mixing!)
+      if(catA !== catB) return catB - catA;
+      
+      // SECONDARY: Within same category, largest first
+      const sizeScoreA = volA * 0.6 + a.wt * 0.4;
+      const sizeScoreB = volB * 0.6 + b.wt * 0.4;
+      return sizeScoreB - sizeScoreA;
     }
   },
   {
@@ -1164,6 +1206,106 @@ const STRATS=[
     sort:()=>Math.random()-0.5
   },
 ];
+
+function recalculateVehicle(stratIdx, vehIdx){
+  const s = strategies[stratIdx];
+  if(!s || !s.vehicles[vehIdx]) return;
+  
+  const veh = s.vehicles[vehIdx];
+  const TL = veh.dims.l;
+  const TW = veh.dims.w;
+  const TH = veh.dims.h;
+  const MAXW = veh.dims.maxW;
+  
+  // Get palettes that should be in this vehicle
+  const vehPalettes = veh.placed.map(p=>palettes.find(pal=>pal.uid===p.uid)).filter(Boolean);
+  
+  // Repack with current flip state
+  const vehKey = `${stratIdx}_${vehIdx}`;
+  const currentFlip = vehicleFlips[vehKey] || false;
+  
+  const result = packIntoVehicleSingle(vehPalettes, TL, TW, TH, MAXW, currentFlip);
+  
+  // Update vehicle data
+  strategies[stratIdx].vehicles[vehIdx] = {
+    ...veh,
+    placed: result.placed,
+    totalW: result.totalW,
+    areaUsed: result.areaUsed,
+  };
+  
+  // Refresh display
+  showVehicle(curVeh);
+}
+
+// Pack with specific flip state (for per-vehicle flipping)
+function packIntoVehicleSingle(queue, vl, vw, vh, vmaxW, useFlip){
+  let freeRects=[{x:0,y:0,w:vl,h:vw}];
+  const placed=[],overflow=[];let totalW=0;
+  
+  const grouped = [];
+  const seen = new Set();
+  for(const pal of queue){
+    const key = `${pal.name}_${pal.l}_${pal.w}_${pal.h}`;
+    if(!seen.has(key)){
+      seen.add(key);
+      grouped.push(...queue.filter(p=>
+        p.name===pal.name && p.l===pal.l && p.w===pal.w && p.h===pal.h
+      ));
+    }
+  }
+  
+  for(const pal of grouped){
+    if(pal.h>vh+0.001){overflow.push({...pal,reason:'výška'});continue;}
+    if(totalW+pal.wt>vmaxW+0.001){overflow.push({...pal,reason:'váha'});continue;}
+    
+    const orientations = [];
+    if(pal.rot && Math.abs(pal.l-pal.w)>0.001){
+      if(useFlip){
+        orientations.push({pl:pal.w, pw:pal.l});
+        orientations.push({pl:pal.l, pw:pal.w});
+      } else {
+        orientations.push({pl:pal.l, pw:pal.w});
+        orientations.push({pl:pal.w, pw:pal.l});
+      }
+    } else {
+      orientations.push({pl:pal.l, pw:pal.w});
+    }
+    
+    let bestPos=null, bestOri=null, bestScore=Infinity;
+    for(const ori of orientations){
+      const pos = packOne(freeRects, ori.pl, ori.pw);
+      if(pos){
+        let proximityBonus = 0;
+        const sameType = placed.filter(p=>
+          p.name===pal.name && p.l===pal.l && p.w===pal.w && p.h===pal.h
+        );
+        for(const existing of sameType){
+          const dist = Math.sqrt(Math.pow(pos.x - existing.x, 2) + Math.pow(pos.y - existing.y, 2));
+          proximityBonus += Math.max(0, 10 - dist);
+        }
+        const score = pos.x*0.5 + pos.y*0.3 - proximityBonus*0.8;
+        if(score < bestScore){bestScore = score;bestPos = pos;bestOri = ori;}
+      }
+    }
+    
+    if(bestPos && bestOri){
+      const {x,y} = bestPos;
+      placed.push({...pal,x,y,pl:bestOri.pl,pw:bestOri.pw});
+      totalW+=pal.wt;
+      const newFree=[];
+      for(const r of freeRects){
+        if(overlap(x,y,bestOri.pl,bestOri.pw,r.x,r.y,r.w,r.h))
+          newFree.push(...splitRect(r,x,y,bestOri.pl,bestOri.pw));
+        else newFree.push(r);
+      }
+      freeRects=newFree.filter((a,i)=>a.w>0.005&&a.h>0.005&&!newFree.some((b,j)=>i!==j&&contained(a,b)));
+    } else {
+      overflow.push({...pal,reason:'plocha'});
+    }
+  }
+  return{placed,overflow,totalW,areaUsed:placed.reduce((s,p)=>s+p.pl*p.pw,0)};
+}
 
 function calculate(){
   const TL=parseFloat(document.getElementById('tLen').value);
@@ -1256,6 +1398,22 @@ function showVehicle(vIdx){
   if(vIdx===99&&s.suggestion) veh=s.suggestion;
   else veh=s.vehicles[vIdx]||s.vehicles[0];
   const dims=veh?veh.dims:{l:TL,w:TW,h:2.7,maxW:MAXW};
+
+  // Update flip button state for current vehicle
+  const vehKey = `${curStrat}_${curVeh}`;
+  const isFlipped = vehicleFlips[vehKey] || false;
+  const flipBtn = document.getElementById('flipBtn');
+  const flipLabel = document.getElementById('flipVehLabel');
+  if(flipBtn){
+    if(isFlipped){
+      flipBtn.classList.add('flipped');
+    } else {
+      flipBtn.classList.remove('flipped');
+    }
+  }
+  if(flipLabel && veh){
+    flipLabel.textContent = veh.label || 'tento kamion';
+  }
 
   // Mark statuses: ok = placed in any vehicle of this strategy
   palettes.forEach(p=>p.status='pending');
