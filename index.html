@@ -560,7 +560,7 @@ canvas { border-radius: 8px; max-width: 100%; max-height: 100%; }
   
   .controls-right {
     flex: 0 0 auto;
-    max-height: 40vh;
+    max-height: 30vh;
   }
   
   .plist {
@@ -568,7 +568,23 @@ canvas { border-radius: 8px; max-width: 100%; max-height: 100%; }
   }
   
   .ca {
-    min-height: 50vh;
+    min-height: 60vh; /* Larger canvas on mobile */
+  }
+  
+  /* Larger canvas elements */
+  canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  .views {
+    padding: 12px;
+  }
+  
+  .vp {
+    padding: 8px !important;
   }
   
   .hstats {
@@ -620,6 +636,21 @@ canvas { border-radius: 8px; max-width: 100%; max-height: 100%; }
   #flipBtn {
     width: 100%;
     margin: 6px 0 0 0 !important;
+    font-size: 11px;
+  }
+  
+  /* Much larger visualization on small screens */
+  .ca {
+    min-height: 70vh !important;
+  }
+  
+  .controls-right {
+    max-height: 25vh;
+  }
+  
+  /* Increase font sizes in canvas for readability */
+  .hint-lbl {
+    font-size: 11px !important;
   }
 }
 </style>
@@ -773,7 +804,7 @@ canvas { border-radius: 8px; max-width: 100%; max-height: 100%; }
     <span class="rpill rpill-warn" id="rPill">Čeká na výpočet</span>
     <span class="rdet" id="rDet">Přidejte palety a klikněte na Vypočítat</span>
     <button class="btn btn-outline btn-sm" id="flipBtn" onclick="flipCurrentVehicle()" style="margin-left:auto;" title="Otočí palety v aktuálním kamionu o 180°">
-      🔄 Otočit <span id="flipVehLabel">tento kamion</span>
+      🔄 Otočit palety (<span id="flipVehLabel">tento kamion</span>)
     </button>
   </div>
 
@@ -1021,14 +1052,23 @@ function splitRect(fr,px,py,pw,ph){
 function contained(a,b){
   return b.x<=a.x+0.001&&b.y<=a.y+0.001&&b.x+b.w>=a.x+a.w-0.001&&b.y+b.h>=a.y+a.h-0.001;
 }
-function packOne(freeRects,pw,ph){
+function packOne(freeRects,pw,ph,palWeight,totalLoadedWeight,truckWidth){
   let best=Infinity,bx=-1,by=-1;
+  const truckCenter = truckWidth / 2;
+  
   for(const r of freeRects){
     if(pw<=r.w+0.001&&ph<=r.h+0.001){
-      // Prefer corners and compact placement (better visual grouping)
-      const cornerScore = r.x * 0.7 + r.y * 0.3; // top-left preference
-      const wasteScore = Math.min(r.w-pw, r.h-ph) * 0.4;
-      const score = cornerScore + wasteScore;
+      // Calculate position score
+      const cornerScore = r.x * 0.4 + r.y * 0.2;
+      const wasteScore = Math.min(r.w-pw, r.h-ph) * 0.3;
+      
+      // CRITICAL: Weight distribution - heavy items closer to center (balance)
+      const palCenter = r.y + ph/2;
+      const distFromCenter = Math.abs(palCenter - truckCenter);
+      const weightFactor = palWeight / 1000; // normalize to tons
+      const balanceScore = distFromCenter * weightFactor * 0.5; // heavy = prefer center
+      
+      const score = cornerScore + wasteScore + balanceScore;
       if(score<best){best=score;bx=r.x;by=r.y;}
     }
   }
@@ -1071,7 +1111,7 @@ function packIntoVehicle(queue, vl, vw, vh, vmaxW){
     // Find best position preferring proximity to same-type palettes
     let bestPos=null, bestOri=null, bestScore=Infinity;
     for(const ori of orientations){
-      const pos = packOne(freeRects, ori.pl, ori.pw);
+      const pos = packOne(freeRects, ori.pl, ori.pw, pal.wt, totalW, vw);
       if(pos){
         let proximityBonus = 0;
         const sameType = placed.filter(p=>
@@ -1274,7 +1314,7 @@ function packIntoVehicleSingle(queue, vl, vw, vh, vmaxW, useFlip){
     
     let bestPos=null, bestOri=null, bestScore=Infinity;
     for(const ori of orientations){
-      const pos = packOne(freeRects, ori.pl, ori.pw);
+      const pos = packOne(freeRects, ori.pl, ori.pw, pal.wt, totalW, vw);
       if(pos){
         let proximityBonus = 0;
         const sameType = placed.filter(p=>
@@ -1343,14 +1383,28 @@ function selectStrat(idx){
     const TH=parseFloat(document.getElementById('tHei').value);
     const MAXW=parseFloat(document.getElementById('tMaxW').value)*1000;
     
-    // Generate new random order
+    // Generate NEW random order
     const randomQueue = [...palettes].sort(()=>Math.random()-0.5);
     const randomRes = packMultiVehicle(randomQueue,TL,TW,TH,MAXW);
     strategies[1] = {...STRATS[1],...randomRes};
     
+    // Clear vehicle flips for this strategy
+    Object.keys(vehicleFlips).forEach(key=>{
+      if(key.startsWith('1_')) delete vehicleFlips[key];
+    });
+    
     // Update badge
     const el=document.getElementById('sb1');
     if(el) el.textContent=randomRes.totalPlaced+'/'+palettes.length;
+    
+    // Show notification that new variant was generated
+    const pill = document.getElementById('rPill');
+    const oldText = pill.textContent;
+    pill.textContent = '🎲 Nová varianta!';
+    pill.className = 'rpill rpill-ok';
+    setTimeout(()=>{
+      // Will be updated by showVehicle anyway
+    }, 500);
   }
   
   curStrat=idx; curVeh=0;
